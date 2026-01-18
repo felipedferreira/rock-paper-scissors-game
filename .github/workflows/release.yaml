@@ -1,0 +1,135 @@
+# This workflow creates releases and builds platform-specific binaries
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          if git describe --tags --abbrev=0 HEAD^ 2>/dev/null; then
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^)
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## What's Changed
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ## Installation
+            Download the appropriate binary for your platform below and run it.
+          draft: false
+          prerelease: false
+
+  build-and-upload:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+            artifact-name: rock-paper-scissors-linux-x64
+          - os: windows-latest
+            runtime: win-x64
+            artifact-name: rock-paper-scissors-win-x64.exe
+          - os: macos-latest
+            runtime: osx-x64
+            artifact-name: rock-paper-scissors-osx-x64
+          - os: macos-latest
+            runtime: osx-arm64
+            artifact-name: rock-paper-scissors-osx-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish
+        run: |
+          dotnet publish src/apps/RockPaperScissors.ConsoleLineInterface/RockPaperScissors.ConsoleLineInterface.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.runtime }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            --output ./publish
+
+      - name: Get published file (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $file = Get-ChildItem -Path ./publish -Filter "RockPaperScissors.ConsoleLineInterface.exe" | Select-Object -First 1
+          Copy-Item $file.FullName -Destination "./${{ matrix.artifact-name }}"
+
+      - name: Get published file (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          file=$(find ./publish -name "RockPaperScissors.ConsoleLineInterface" -type f | head -n 1)
+          cp "$file" "./${{ matrix.artifact-name }}"
+          chmod +x "./${{ matrix.artifact-name }}"
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./${{ matrix.artifact-name }}
+          asset_name: ${{ matrix.artifact-name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ./${{ matrix.artifact-name }}
+          retention-days: 7
