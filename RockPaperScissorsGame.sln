@@ -18,6 +18,14 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Etc", "Etc", "{8A7E980B-FD5A-4730-B60E-1D4E8B8B169E}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\build.yaml = .github\workflows\build.yaml
+		.gitignore = .gitignore
+		.github\workflows\release.yaml = .github\workflows\release.yaml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{F0D8F37E-236B-4F27-98F0-518631280D5E}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+		docs\RELEASE_PROCESS.md = docs\RELEASE_PROCESS.md
 	EndProjectSection
 EndProject
 Global
@@ -35,6 +43,7 @@ Global
 		{DCD789DF-5354-4EFA-9666-E63B719D47B1} = {FB9A76E8-D681-47FC-A924-472A3978F362}
 		{FDC83B58-0452-4EAD-A3AF-A3C8394AE336} = {FB9A76E8-D681-47FC-A924-472A3978F362}
 		{8A7E980B-FD5A-4730-B60E-1D4E8B8B169E} = {089AAFDB-D07D-4955-BBB1-7B86646F9514}
+		{F0D8F37E-236B-4F27-98F0-518631280D5E} = {089AAFDB-D07D-4955-BBB1-7B86646F9514}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{29AE0273-69CD-4C5D-8C31-571DC537733F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
