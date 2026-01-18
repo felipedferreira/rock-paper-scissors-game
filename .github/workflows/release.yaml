@@ -98,6 +98,7 @@ jobs:
         run: dotnet restore
 
       - name: Publish
+        shell: bash
         run: |
           dotnet publish src/apps/RockPaperScissors.ConsoleLineInterface/RockPaperScissors.ConsoleLineInterface.csproj \
             --configuration Release \
